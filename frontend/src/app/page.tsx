@@ -21,8 +21,8 @@ async function getRecentAudits() {
 export default async function Dashboard() {
   const apiAudits = await getRecentAudits();
   
-  // Usar datos de la API si está viva, si no, usar mock data
-  const isUsingMock = !apiAudits || apiAudits.length === 0;
+  // Usar datos de la API si la petición fue exitosa (aunque esté vacío). Solo usar mock si falla la API (null).
+  const isUsingMock = apiAudits === null;
   
   const recentAudits = !isUsingMock ? apiAudits : [
     { id: "PR-482", repo: "frontend-core", status: "completed", issues: 0, time: "Hace 5 min" },
