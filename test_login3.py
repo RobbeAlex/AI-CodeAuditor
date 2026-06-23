@@ -1,9 +1,5 @@
 def calcular_total(lista_precios):
     total: float = 0.0
-
-    if not lista_precios:
-        return total
-    
     for item in lista_precios:
             precio = float(item)
             total += precio
