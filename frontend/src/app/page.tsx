@@ -1,4 +1,6 @@
 import Link from "next/link";
+import AuditTable from "@/components/AuditTable";
+import { SyncButton } from "@/components/SyncButton";
 
 // Server component para hacer fetch a la API de FastAPI
 async function getRecentAudits() {
@@ -24,18 +26,51 @@ export default async function Dashboard() {
   // Usar datos de la API si la petición fue exitosa (aunque esté vacío). Solo usar mock si falla la API (null).
   const isUsingMock = apiAudits === null;
   
-  const recentAudits = !isUsingMock ? apiAudits : [
-    { id: "PR-482", repo: "frontend-core", status: "completed", issues: 0, time: "Hace 5 min" },
-    { id: "PR-481", repo: "payment-api", status: "completed", issues: 2, time: "Hace 12 min" },
-    { id: "PR-480", repo: "auth-service", status: "failed", issues: 5, time: "Hace 1 hora" },
-    { id: "PR-479", repo: "mobile-app", status: "in_progress", issues: 0, time: "En progreso" },
-  ];
+  let recentAudits = [];
+  if (!isUsingMock) {
+    recentAudits = apiAudits.map((audit: any) => {
+      const issuesCount = (audit.findings?.security?.length || 0) + (audit.findings?.quality?.length || 0);
+      const dateStr = audit.created_at.endsWith('Z') ? audit.created_at : audit.created_at + 'Z';
+      const date = new Date(dateStr);
+      
+      return {
+        dbId: audit.id,
+        id: `PR-${audit.pr_number}`,
+        repo: audit.repository_name,
+        status: audit.status,
+        issues: issuesCount,
+        time: date.toLocaleString(),
+        rawFindings: audit.findings // Lo guardaremos por si queremos mostrar más detalle después
+      };
+    });
+  } else {
+    recentAudits = [
+      { id: "PR-482", repo: "frontend-core", status: "completed", issues: 0, time: "Hace 5 min" },
+      { id: "PR-481", repo: "payment-api", status: "completed", issues: 2, time: "Hace 12 min" },
+      { id: "PR-480", repo: "auth-service", status: "failed", issues: 5, time: "Hace 1 hora" },
+      { id: "PR-479", repo: "mobile-app", status: "in_progress", issues: 0, time: "En progreso" },
+    ];
+  }
+
+  let totalPRs = 0;
+  let totalSecurity = 0;
+  let totalQuality = 0;
+
+  if (!isUsingMock) {
+    totalPRs = apiAudits.length;
+    apiAudits.forEach((audit: any) => {
+       totalSecurity += audit.findings?.security?.length || 0;
+       totalQuality += audit.findings?.quality?.length || 0;
+    });
+  }
+
+  const technicalDebt = totalSecurity * 2 + totalQuality * 0.5;
 
   const stats = [
-    { label: "PRs Auditados", value: isUsingMock ? "1,284" : "1", change: "+12%", trend: "up", icon: "📊" },
-    { label: "Vulnerabilidades Críticas", value: isUsingMock ? "3" : "0", change: "-2", trend: "down", icon: "🛡️" },
-    { label: "Deuda Técnica (hrs)", value: isUsingMock ? "124" : "0", change: "-15%", trend: "down", icon: "⏱️" },
-    { label: "Workers Activos", value: "4/4", change: "Óptimo", trend: "neutral", icon: "⚡" },
+    { label: "PRs Auditados", value: isUsingMock ? "1,284" : totalPRs.toString(), change: isUsingMock ? "+12%" : "En vivo", trend: "up", icon: "📊" },
+    { label: "Vulnerabilidades Críticas", value: isUsingMock ? "3" : totalSecurity.toString(), change: isUsingMock ? "-2" : "En vivo", trend: totalSecurity > 0 ? "down" : "up", icon: "🛡️" },
+    { label: "Deuda Técnica (hrs)", value: isUsingMock ? "124" : technicalDebt.toString(), change: isUsingMock ? "-15%" : "Calculado", trend: technicalDebt > 0 ? "down" : "up", icon: "⏱️" },
+    { label: "Workers Activos", value: "1/1", change: "Celery OK", trend: "neutral", icon: "⚡" },
   ];
 
   return (
@@ -47,10 +82,7 @@ export default async function Dashboard() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard <span className="text-gradient">DevSecOps</span></h1>
           <p className="text-muted-foreground mt-1">Métricas en tiempo real del motor de IA.</p>
         </div>
-        <button className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg font-medium transition-all shadow-lg shadow-primary/20 flex items-center gap-2">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-          Sincronizar Repos
-        </button>
+        <SyncButton />
       </div>
 
       {/* Stats Grid */}
@@ -87,49 +119,7 @@ export default async function Dashboard() {
           </div>
           
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-border/50 text-muted-foreground text-sm">
-                  <th className="pb-3 font-medium">Pull Request</th>
-                  <th className="pb-3 font-medium">Repositorio</th>
-                  <th className="pb-3 font-medium">Estado</th>
-                  <th className="pb-3 font-medium">Hallazgos</th>
-                  <th className="pb-3 font-medium text-right">Tiempo</th>
-                </tr>
-              </thead>
-              <tbody className="text-sm">
-                {recentAudits.map((audit, i) => (
-                  <tr key={i} className="border-b border-border/10 hover:bg-secondary/20 transition-colors group">
-                    <td className="py-4 font-medium text-foreground group-hover:text-primary transition-colors cursor-pointer">
-                      {audit.id}
-                    </td>
-                    <td className="py-4 text-muted-foreground">{audit.repo}</td>
-                    <td className="py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border
-                        ${audit.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 
-                          audit.status === 'failed' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 
-                          'bg-blue-500/10 text-blue-400 border-blue-500/20 animate-pulse'}`}>
-                        {audit.status}
-                      </span>
-                    </td>
-                    <td className="py-4">
-                      {audit.issues > 0 ? (
-                        <span className="flex items-center gap-1 text-rose-400">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                          {audit.issues}
-                        </span>
-                      ) : (
-                        <span className="text-emerald-400 flex items-center gap-1">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                          Limpio
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-4 text-right text-muted-foreground">{audit.time}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <AuditTable audits={recentAudits} />
           </div>
         </div>
 

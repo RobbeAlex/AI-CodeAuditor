@@ -7,6 +7,7 @@ from typing import List
 class AuditResult(BaseModel):
     security: List[str] = Field(description="Lista de vulnerabilidades de seguridad encontradas. Lista vacía si no hay ninguna.")
     quality: List[str] = Field(description="Lista de problemas de calidad de código o anti-patrones.")
+    recommendations: List[str] = Field(description="Recomendaciones y pasos específicos para solucionar los errores encontrados.")
     summary: str = Field(description="Resumen breve de los cambios realizados.")
 
 class AIAuditService:
@@ -45,5 +46,6 @@ class AIAuditService:
             return {
                 "security": ["El modelo de IA local no está encendido o falló la conexión (Mock)."],
                 "quality": ["Asegúrate de tener Llama 3 ejecutándose localmente para resultados reales."],
+                "recommendations": ["Inicia Ollama con el comando 'ollama run llama3'"],
                 "summary": "Fallo de inferencia, usando datos simulados."
             }

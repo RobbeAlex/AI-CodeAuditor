@@ -98,6 +98,19 @@ export default function AuditsPage() {
                   )}
                 </ul>
               </div>
+
+              <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                <h4 className="font-medium text-blue-400 mb-2 flex items-center gap-2">
+                  <span>🔧</span> Recomendaciones ({result.recommendations?.length || 0})
+                </h4>
+                <ul className="list-disc list-inside text-sm text-blue-300/80 space-y-1">
+                  {result.recommendations?.length > 0 ? (
+                    result.recommendations.map((r: string, i: number) => <li key={i}>{r}</li>)
+                  ) : (
+                    <span className="text-muted-foreground">Sin recomendaciones.</span>
+                  )}
+                </ul>
+              </div>
             </div>
           )}
         </div>
